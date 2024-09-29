@@ -12,7 +12,7 @@ class Particle:
         pygame.draw.circle(self.surface, self.color, (self.x[0], self.y[0]), self.radius)
     
     def update(self, dt):
-        self.x[1] = self.x[1] + self.x[2] * dt
+        #self.x[1] = self.x[1] + self.x[2] * dt
         self.x[0] = self.x[0] + self.x[1] * dt
         self.y[1] = self.y[1] + self.y[2] * dt
         self.y[0] = self.y[0] + self.y[1] * dt
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     dt = 0
     running = True
     bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
-    particle = Particle([200, 100, 0], [200, 100, 9.81], (255, 0, 0), 10, screen, bbox)
+    particle = Particle([200, -20, 0], [200, 43, 9.81], (255, 0, 0), 10, screen, bbox)
     particle.draw()
     while running:
         for event in pygame.event.get():
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         particle.draw()
         # Update the display
         pygame.display.flip()
-        dt = clock.tick(60) / 1000
+        dt = clock.tick(60) / 200
         particle.update(dt)
     # Quit Pygame
     pygame.quit()
