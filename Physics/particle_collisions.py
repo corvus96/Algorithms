@@ -1,15 +1,32 @@
 import pygame
 
 class Particle:
-    def __init__(self, x, y, color, radius, surface) -> None:
-        self.x = x
-        self.y = y
+    def __init__(self, x: list, y: list, color, radius, surface, bbox) -> None:
+        self.x = x # [p_xo, v_xo, a_xo]
+        self.y = y # [p_yo, v_yo, a_yo]
         self.color = color
         self.radius = radius
         self.surface = surface
-    
+        self.bbox = bbox # [left, right, up, down]
     def draw(self):
-        pygame.draw.circle(self.surface, self.color, (self.x, self.y), self.radius)
+        pygame.draw.circle(self.surface, self.color, (self.x[0], self.y[0]), self.radius)
+    
+    def update(self, dt):
+        self.x[1] = self.x[1] + self.x[2] * dt
+        self.x[0] = self.x[0] + self.x[1] * dt
+        self.y[1] = self.y[1] + self.y[2] * dt
+        self.y[0] = self.y[0] + self.y[1] * dt
+        self.handle_box_collision()
+
+    def handle_box_collision(self):
+        b_particle = [self.x[0] - self.radius, 
+                      self.x[0] + self.radius, 
+                      self.y[0] - self.radius,
+                      self.y[0] + self.radius] # [left, right, up, down]
+        if b_particle[0] <= self.bbox[0] or b_particle[1] >= self.bbox[1]:
+            self.x[1] = - self.x[1]
+        if b_particle[2] <= self.bbox[2] or b_particle[3] >= self.bbox[3]:
+            self.y[1] = - self.y[1]
 
 if __name__ == "__main__":
     # Initialize Pygame
@@ -24,8 +41,12 @@ if __name__ == "__main__":
     x1 = window_width - rect_width
     y1 = window_height - rect_height
     # Main loop
+    clock = pygame.time.Clock()
+    dt = 0
     running = True
-    particle = Particle(200, 200, (255, 0, 0), 10, screen)
+    bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
+    particle = Particle([200, 100, 0], [200, 100, 9.81], (255, 0, 0), 10, screen, bbox)
+    particle.draw()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -36,10 +57,11 @@ if __name__ == "__main__":
 
 
         # Draw the blue rectangle
-        pygame.draw.polygon(screen, (0, 0, 255), [(x1,y1), (x1, rect_height), (rect_width, rect_height), (rect_width,y1)], thickness)
+        rectangle = pygame.draw.polygon(screen, (0, 0, 255), [(x1,y1), (x1, rect_height), (rect_width, rect_height), (rect_width,y1)], thickness)
         particle.draw()
         # Update the display
         pygame.display.flip()
-
+        dt = clock.tick(60) / 1000
+        particle.update(dt)
     # Quit Pygame
     pygame.quit()
