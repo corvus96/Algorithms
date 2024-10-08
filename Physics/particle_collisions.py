@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 
 class Particle:
-    def __init__(self, pos, vel, acc ,color, radius, surface) -> None:
+    def __init__(self, pos, vel, acc ,color, radius, surface, id) -> None:
         self.pos = pos 
         self.vel = vel 
         self.acc = acc
@@ -10,6 +10,7 @@ class Particle:
         self.radius = radius
         self.surface = surface
         self.mass = np.pi * self.radius**2
+        self.id = id
 
     def draw(self):
         pygame.draw.circle(self.surface, self.color, (self.pos[0], self.pos[1]), self.radius)
@@ -33,10 +34,6 @@ class ParticleCollisions:
         self._stragegy = strategy
     def euler_distance(self, p):
         return np.sqrt((p[0].x[0] - p[1].x[0])**2 + (p[0].y[0] - p[1].y[0])**2)
-    def update_particle(self, p, dt, f_bbox):
-        p.update(dt)
-        bbox = p.get_bb()
-        self.handle_frame_collision(p, bbox, f_bbox)
     
     def handle_frame_collision(self, particle, p_bbox, f_bbox):
         if p_bbox[0] <= f_bbox[0] or p_bbox[1] >= f_bbox[1]:
@@ -47,9 +44,12 @@ class ParticleCollisions:
     def update_dynamics(self, particles, dt, frame):
         '''particles is list of objects where each element is a Particle instance,
         pairs_p is a list of lists with the following shape [[x1, y1, radius, mass, v1]]'''
-        ps = self._stragegy.handle_collisions(particles)
-        for i in range(len(ps)): 
-            self.update_particle(ps[i], dt, frame)
+        p_filtered = self._stragegy.handle_collisions(particles)
+        for p in p_filtered: 
+            p.update(dt)
+            bbox = p.get_bb()
+            self.handle_frame_collision(p, bbox, frame)
+            self.handle_particles_collisions(p, p_filtered)
         # if self.euler_distance(pairs_p) * 0.98 <= particles[0].radius + particles[1].radius:
         #     sum_mass = particles[0].mass + particles[1].mass
         #     diff_mass = particles[0].mass - particles[1].mass
@@ -57,6 +57,30 @@ class ParticleCollisions:
         #     particles[0].y[1] = ((diff_mass) * particles[0].y[1] + 2 * particles[1].mass * particles[1].y[1]) / sum_mass
         #     particles[1].x[1] = (-(diff_mass) * particles[1].x[1] + 2 * particles[0].mass * particles[0].x[1]) / sum_mass
         #     particles[1].y[1] = (-(diff_mass) * particles[1].y[1] + 2 * particles[0].mass * particles[0].y[1]) / sum_mass
+
+    def handle_particles_collisions(self, p, particles):
+        for other_p in particles:
+            if other_p.id != p.id:
+                dist = np.linalg.norm(p.pos - other_p.pos)
+                if dist <= (p.radius + other_p.radius):
+                    v1, v2 = self.get_resp_vel(p, other_p)
+                    p.vel = v1
+                    other_p.vel = v2
+
+    def get_resp_vel(self, p, other_p):
+        v1 = p.vel
+        v2 = other_p.vel
+        m1 = p.mass
+        m2 = other_p.mass
+        x1 = p.pos
+        x2 = other_p.pos
+
+        p_resp = self.compute_velocity(v1, v2, m1, m2, x1, x2)
+        other_p_resp = self.compute_velocity(v2, v1, m1, m2, x2, x1)
+        return p_resp, other_p_resp
+
+    def compute_velocity(self, v1, v2, m1, m2, x1, x2):
+        return v1 - (2 * m2 / (m1 + m2)) * np.dot(v1 - v2, x1 - x2) / np.linalg.norm(x1 - x2) ** 2 * (x1 - x2)
 
 class SweepPrune(CollisionMethod):
     def handle_collisions(self, data):
@@ -79,8 +103,8 @@ if __name__ == "__main__":
     dt = 0
     running = True
     f_bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
-    particle = Particle(np.array([410, 200]), np.array([-20, 0]), np.array([0, 5]), (255, 0, 0), 40, screen)
-    particle2 = Particle(np.array([400, 200]), np.array([20, 0]), np.array([0, 5]), (0, 0, 255), 40, screen)
+    particle = Particle(np.array([480, 200]), np.array([-20, 0]), np.array([0, 5]), (255, 0, 0), 30, screen, 1)
+    particle2 = Particle(np.array([400, 200]), np.array([20, 0]), np.array([0, 5]), (0, 0, 255), 40, screen, 2)
     particle.draw()
     particle2.draw()
     particles_array = [particle, particle2]
