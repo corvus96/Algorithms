@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import random
 
 class Particle:
     def __init__(self, pos, vel, acc ,color, radius, surface, id) -> None:
@@ -50,13 +51,6 @@ class ParticleCollisions:
             bbox = p.get_bb()
             self.handle_frame_collision(p, bbox, frame)
             self.handle_particles_collisions(p, p_filtered)
-        # if self.euler_distance(pairs_p) * 0.98 <= particles[0].radius + particles[1].radius:
-        #     sum_mass = particles[0].mass + particles[1].mass
-        #     diff_mass = particles[0].mass - particles[1].mass
-        #     particles[0].x[1] = ((diff_mass) * particles[0].x[1] + 2 * particles[1].mass * particles[1].x[1]) / sum_mass
-        #     particles[0].y[1] = ((diff_mass) * particles[0].y[1] + 2 * particles[1].mass * particles[1].y[1]) / sum_mass
-        #     particles[1].x[1] = (-(diff_mass) * particles[1].x[1] + 2 * particles[0].mass * particles[0].x[1]) / sum_mass
-        #     particles[1].y[1] = (-(diff_mass) * particles[1].y[1] + 2 * particles[0].mass * particles[0].y[1]) / sum_mass
 
     def handle_particles_collisions(self, p, particles):
         for other_p in particles:
@@ -86,6 +80,23 @@ class SweepPrune(CollisionMethod):
     def handle_collisions(self, data):
         return data
 
+def create_particles(n, frame_x1, frame_y1, frame_height, frame_width, max_radius, max_speed, min_speed, acc, surface):
+    particles = []
+
+    for i in range(n):
+        x  = random.randint(frame_x1 + max_radius, frame_x1 + frame_width - max_radius)
+        y  = random.randint(frame_y1 + max_radius, frame_y1 + frame_height - max_radius)
+        vx = random.randint(min_speed, max_speed)
+        vy = random.randint(min_speed, max_speed)
+        color_r = random.randint(0, 255)
+        color_g = random.randint(0, 255)
+        color_b = random.randint(0, 255)
+        radius = random.randint(1, max_radius)
+        p = Particle(np.array([x, y]), np.array([vx, vy]), np.array([0, acc]), (color_r, color_b, color_g), radius, surface, i)
+        p.draw()
+        particles.append(p)
+    
+    return particles
 if __name__ == "__main__":
     # Initialize Pygame
     pygame.init()
@@ -103,11 +114,8 @@ if __name__ == "__main__":
     dt = 0
     running = True
     f_bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
-    particle = Particle(np.array([480, 200]), np.array([-20, 0]), np.array([0, 5]), (255, 0, 0), 30, screen, 1)
-    particle2 = Particle(np.array([400, 200]), np.array([20, 0]), np.array([0, 5]), (0, 0, 255), 40, screen, 2)
-    particle.draw()
-    particle2.draw()
-    particles_array = [particle, particle2]
+    
+    particles_array = create_particles(30, x1, y1, rect_height, rect_width, 25, 4, -4, 3, screen)
     p_coll = ParticleCollisions(SweepPrune())
     while running:
         for event in pygame.event.get():
@@ -120,11 +128,11 @@ if __name__ == "__main__":
 
         # Draw the blue rectangle
         rectangle = pygame.draw.polygon(screen, (0, 0, 255), [(x1,y1), (x1, rect_height), (rect_width, rect_height), (rect_width,y1)], thickness)
-        particle.draw()
-        particle2.draw()
+        for part in particles_array:
+            part.draw()
         # Update the display
         pygame.display.flip()
-        dt = clock.tick(60) / 200
+        dt = clock.tick(60) / 1000
         p_coll.update_dynamics(particles_array, dt, f_bbox)
     # Quit Pygame
     pygame.quit()
