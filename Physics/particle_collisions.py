@@ -17,6 +17,7 @@ class Particle:
         pygame.draw.circle(self.surface, self.color, (self.pos[0], self.pos[1]), self.radius)
     
     def update(self, dt):
+        #self.acc = np.array([0, 0])
         self.vel = self.vel + self.acc * dt
         self.pos = self.pos + self.vel * dt 
 
@@ -70,7 +71,7 @@ class ParticleCollisions:
         x2 = other_p.pos
 
         p_resp = self.compute_velocity(v1, v2, m1, m2, x1, x2)
-        other_p_resp = self.compute_velocity(v2, v1, m1, m2, x2, x1)
+        other_p_resp = self.compute_velocity(v2, v1, m2, m1, x2, x1)
         return p_resp, other_p_resp
 
     def compute_velocity(self, v1, v2, m1, m2, x1, x2):
@@ -82,17 +83,17 @@ class SweepPrune(CollisionMethod):
 
 def create_particles(n, frame_x1, frame_y1, frame_height, frame_width, max_radius, max_speed, min_speed, acc, surface):
     particles = []
+    x = np.random.uniform(frame_x1 + 2 * max_radius, frame_x1 + frame_width - 2 * max_radius, n)
+    y = np.random.uniform(frame_y1 + 2 * max_radius, frame_y1 + frame_height - 2 * max_radius, n)
 
     for i in range(n):
-        x  = random.randint(frame_x1 + max_radius, frame_x1 + frame_width - max_radius)
-        y  = random.randint(frame_y1 + max_radius, frame_y1 + frame_height - max_radius)
         vx = random.randint(min_speed, max_speed)
         vy = random.randint(min_speed, max_speed)
         color_r = random.randint(0, 255)
         color_g = random.randint(0, 255)
         color_b = random.randint(0, 255)
-        radius = random.randint(1, max_radius)
-        p = Particle(np.array([x, y]), np.array([vx, vy]), np.array([0, acc]), (color_r, color_b, color_g), radius, surface, i)
+        radius = random.randint(5, max_radius)
+        p = Particle(np.array([x[i], y[i]]), np.array([vx, vy]), np.array([0, acc]), (color_r, color_b, color_g), radius, surface, i)
         p.draw()
         particles.append(p)
     
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     running = True
     f_bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
     
-    particles_array = create_particles(30, x1, y1, rect_height, rect_width, 25, 4, -4, 3, screen)
+    particles_array = create_particles(30, x1, y1, rect_height, rect_width, 20, 20, -20, 0, screen)
     p_coll = ParticleCollisions(SweepPrune())
     while running:
         for event in pygame.event.get():
