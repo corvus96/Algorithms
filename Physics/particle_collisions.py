@@ -34,33 +34,41 @@ class CollisionMethod:
 class ParticleCollisions:
     def __init__(self, strategy: CollisionMethod) -> None:
         self._stragegy = strategy
+        self.collisions_counter = 0
     def euler_distance(self, p):
         return np.sqrt((p[0].x[0] - p[1].x[0])**2 + (p[0].y[0] - p[1].y[0])**2)
     
     def handle_frame_collision(self, particle, p_bbox, f_bbox):
         if p_bbox[0] <= f_bbox[0] or p_bbox[1] >= f_bbox[1]:
+            self.collisions_counter += 1
             particle.vel[0] = - particle.vel[0]
         if p_bbox[2] <= f_bbox[2] or p_bbox[3] >= f_bbox[3]:
+            self.collisions_counter += 1
             particle.vel[1] = - particle.vel[1]
 
     def update_dynamics(self, particles, dt, frame):
         '''particles is list of objects where each element is a Particle instance,
         pairs_p is a list of lists with the following shape [[x1, y1, radius, mass, v1]]'''
-        p_filtered = self._stragegy.handle_collisions(particles)
-        for p in p_filtered: 
+        #p_filtered = self._stragegy.handle_collisions(particles)
+        self.collisions_counter = 0
+        for p in particles: 
             p.update(dt)
             bbox = p.get_bb()
             self.handle_frame_collision(p, bbox, frame)
-            self.handle_particles_collisions(p, p_filtered)
+        self.handle_particles_collisions(particles)
 
-    def handle_particles_collisions(self, p, particles):
-        for other_p in particles:
-            if other_p.id != p.id:
-                dist = np.linalg.norm(p.pos - other_p.pos)
-                if dist <= (p.radius + other_p.radius):
-                    v1, v2 = self.get_resp_vel(p, other_p)
-                    p.vel = v1
-                    other_p.vel = v2
+        print(self.collisions_counter)
+
+    def handle_particles_collisions(self, particles):
+        possible_collisions = self._stragegy.handle_collisions(particles)
+        for particle, other_particle in possible_collisions:
+            if other_particle.id != particle.id:
+                dist = np.linalg.norm(particle.pos - other_particle.pos)
+                self.collisions_counter += 1
+                if dist <= (particle.radius + other_particle.radius):
+                    v1, v2 = self.get_resp_vel(particle, other_particle)
+                    particle.vel = v1
+                    other_particle.vel = v2
 
     def get_resp_vel(self, p, other_p):
         v1 = p.vel
@@ -78,8 +86,22 @@ class ParticleCollisions:
         return v1 - (2 * m2 / (m1 + m2)) * np.dot(v1 - v2, x1 - x2) / np.linalg.norm(x1 - x2) ** 2 * (x1 - x2)
 
 class SweepPrune(CollisionMethod):
-    def handle_collisions(self, data):
-        return data
+    def handle_collisions(self, particles):
+        # implements the sort and sweep algorithm for broad phase
+        # helpful reference: https://github.com/mattleibow/jitterphysics/wiki/Sweep-and-Prune
+        axis_list = sorted(particles, key=lambda x: x.get_bb()[0])
+        active_list = []
+        possible_collisions = set()
+        for particle in axis_list:
+            to_remove = [p for p in active_list if particle.get_bb()[0] > p.get_bb()[1]]
+            for r in to_remove:
+                active_list.remove(r)
+            for other_particle in active_list:
+                possible_collisions.add((particle, other_particle))
+
+            active_list.append(particle)
+        
+        return possible_collisions
 
 def create_particles(n, frame_x1, frame_y1, frame_height, frame_width, max_radius, max_speed, min_speed, acc, surface):
     particles = []
@@ -116,7 +138,7 @@ if __name__ == "__main__":
     running = True
     f_bbox = [x1 + thickness, rect_width - thickness, y1 + thickness, rect_height - thickness]
     
-    particles_array = create_particles(30, x1, y1, rect_height, rect_width, 20, 20, -20, 0, screen)
+    particles_array = create_particles(100, x1, y1, rect_height, rect_width, 20, 80, -80, 0, screen)
     p_coll = ParticleCollisions(SweepPrune())
     while running:
         for event in pygame.event.get():
@@ -133,6 +155,7 @@ if __name__ == "__main__":
             part.draw()
         # Update the display
         pygame.display.flip()
+        print(clock.tick(60))
         dt = clock.tick(60) / 1000
         p_coll.update_dynamics(particles_array, dt, f_bbox)
     # Quit Pygame
