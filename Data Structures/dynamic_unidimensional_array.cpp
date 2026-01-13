@@ -51,6 +51,18 @@ template <typename T>
 bool push_back(D_Array_heap<T>& self, const T& value);
 
 /**
+ * @brief Removes the last element from the heap.
+ *
+ * Destroys the element if it has a non-trivial destructor.
+ *
+ * @param self Reference to the heap instance.
+ * @throws std::out_of_range if the heap is empty.
+ */
+template <typename T>
+void pop(D_Array_heap<T>& self);
+
+
+/**
  * @brief A manually managed dynamic array (heap-based).
  *
  * Mimics a simplified std::vector behavior, supporting:
@@ -70,6 +82,7 @@ struct D_Array_heap {
     void (*destroy)(D_Array_heap<T>&) = ::destroy<T>;
     void (*print)(D_Array_heap<T>&) = ::print<T>;
     bool (*push_back)(D_Array_heap<T>&, const T&) = ::push_back<T>;
+    void (*pop)(D_Array_heap<T>& self) = ::pop<T>;
 };
 
 /**
@@ -214,6 +227,22 @@ bool push_back(D_Array_heap<T>& self, const T& value) {
     return true;
 }
 
+/**
+ * @brief Removes the last element from the heap.
+ *
+ * Ends the lifetime of the element and reduces the logical size.
+ */
+template <typename T>
+void pop(D_Array_heap<T>& self){
+    if(self.size == 0){
+        throw out_of_range("pop on empty array");
+    }
+    if constexpr (is_trivially_destructible_v<T>){
+        self.data[self.size - 1].~T();
+    }
+    --self.size;
+}
+
 int main() {
     D_Array_heap<int> arr;
     D_Array_heap<string> arr2;
@@ -230,6 +259,10 @@ int main() {
     arr.push_back(arr, 5);
     arr2.push_back(arr2, "hola");
 
+    arr.print(arr);
+    arr2.print(arr2);
+    arr.pop(arr);
+    arr2.pop(arr2);
     arr.print(arr);
     arr2.print(arr2);
 
